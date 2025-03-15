@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adaptive N-back Cognitive Task</title>
+  <style>
+    :root {
+      --primary: #2196F3;
+      --success: #4CAF50;
+      --error: #f44336;
+      --text: #333;
+      --base-time: 500ms;
+      --base-interval: 1500ms;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      margin: 0;
+      min-height: 100vh;
+      padding: 2vmin;
+      color: var(--text);
+    }
+    #container {
+      max-width: min(800px, 90vw);
+      margin: 2vmin auto;
+      background: rgba(255, 255, 255, 0.95);
+      padding: clamp(1rem, 3vmin, 2rem);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+    }
+    h1, h2 {
+      color: var(--primary);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    #display {
+      font-size: clamp(3rem, 10vw, 6rem);
+      text-align: center;
+      margin: 2rem 0;
+      padding: 2rem;
+      background: #f8f9fa;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      min-height: 20vh;
+    }
+    #display.active {
+      background: var(--primary);
+      color: white;
+    }
+    #display.correct { background: var(--success); }
+    #display.error { background: var(--error); }
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--primary);
+      color: white;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 2px solid var(--primary);
+      font-size: 1rem;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #eee;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+    .progress {
+      height: 100%;
+      background: var(--primary);
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .stat-item {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .key-hint {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 1rem 0;
+    }
+    .key {
+      padding: 8px 16px;
+      border: 2px solid var(--primary);
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .touch-input {
+      display: none;
+      justify-content: center;
+      gap: 2rem;
+      margin: 2rem 0;
+    }
+    .touch-btn {
+      padding: 1.5rem;
+      font-size: 1.5rem;
+      min-width: 80px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+    @media (max-width: 600px) {
+      #container {
+        padding: 1rem;
+        margin: 10px;
+      }
+      #display {
+        font-size: 3rem;
+        padding: 1rem;
+      }
+      .touch-input {
+        flex-direction: column;
+        align-items: center;
+      }
+      .key-hint {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>Adaptive N-back Cognitive Task</h1>
+    
+    <div class="card" id="instructions">
+      <h2>Instructions</h2>
+      <div class="key-hint">
+        <div class="key">← Target</div>
+        <div class="key">→ Non-target</div>
+      </div>
+      <p>In this cognitive task, letters will appear one at a time. Your goal is to determine if the current letter matches:</p>
+      <ul>
+        <li><strong>0-back:</strong> The letter <em>X</em></li>
+        <li><strong>1-back:</strong> The immediately previous letter</li>
+        <li><strong>2-back:</strong> The letter from two trials back</li>
+      </ul>
+      <p>The test automatically adapts difficulty based on your performance. Respond as quickly and accurately as possible using the arrow keys or touch buttons.</p>
+    </div>
+
+    <div class="card" id="settings">
+      <h2>Test Settings</h2>
+      <div class="button-group">
+        <select id="levelSelect">
+          <option value="0">0-back</option>
+          <option value="1">1-back</option>
+          <option value="2">2-back</option>
+        </select>
+        <button id="startButton">Start Test</button>
+      </div>
+    </div>
+
+    <div id="display" data-level=""></div>
+    <div class="progress-bar"><div class="progress"></div></div>
+
+    <div class="touch-input">
+      <button class="touch-btn" data-response="ArrowLeft">← Target</button>
+      <button class="touch-btn" data-response="ArrowRight">→ Non-target</button>
+    </div>
+
+    <div class="card" id="results">
+      <h2>Performance Results</h2>
+      <div class="stats"></div>
+    </div>
+  </div>
+
+  <script>
+    // Adaptive difficulty parameters
+    let currentLevel = 0;
+    let displayTime = 500;
+    let intervalTime = 1500;
+    let trialCount = 20;
+    const difficultyHistory = [];
+    const performanceThreshold = 0.75;
+
+    // Global variables for trial management
+    let sequence = [];
+    let trialData = [];
+    let trialIndex = 0;
+    let trialInProgress = false;
+    let currentTrialStartTime = 0;
+    let currentTrial = null;
+    let responseTimeout = null;
+    let keyboardDetected = false;
+
+    // DOM elements
+    const elements = {
+      display: document.getElementById("display"),
+      progress: document.querySelector(".progress"),
+      startButton: document.getElementById("startButton"),
+      results: document.querySelector(".stats"),
+      levelSelect: document.getElementById("levelSelect"),
+      touchUI: document.querySelector(".touch-input")
+    };
+
+    // Input detection for initial device type
+    function detectInputType(e) {
+      if (e.type === 'keydown') {
+        keyboardDetected = true;
+        elements.touchUI.style.display = 'none';
+      }
+    }
+    document.addEventListener('keydown', detectInputType, { once: true });
+    document.addEventListener('click', () => {
+      if (!keyboardDetected) {
+        elements.touchUI.style.display = 'flex';
+      }
+    }, { once: true });
+
+    // Global response handler shared by keyboard and touch inputs
+    function processResponse(e) {
+      if (!trialInProgress || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      // clear omission timeout to prevent double handling
+      clearTimeout(responseTimeout);
+      const reactionTime = Date.now() - currentTrialStartTime;
+      const isCorrect = checkAnswer(currentTrial, e.key);
+      
+      // Update display classes to indicate correctness
+      elements.display.classList.remove('active');
+      elements.display.classList.add(isCorrect ? 'correct' : 'error');
+
+      recordTrialData(e.key, reactionTime, isCorrect);
+      trialInProgress = false;
+
+      // Proceed to the next trial after a brief pause
+      setTimeout(() => {
+        elements.display.classList.remove('correct', 'error');
+        trialIndex++;
+        runTrial();
+      }, 500);
+    }
+
+    // Attach touch input events (keyboard events are attached per trial)
+    document.querySelectorAll('.touch-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (!trialInProgress) return;
+        processResponse({ key: this.dataset.response });
+      });
+    });
+
+    // Adaptive difficulty adjustment function
+    function adjustDifficulty(accuracy) {
+      difficultyHistory.push(accuracy);
+      if (difficultyHistory.length > 3) difficultyHistory.shift();
+      
+      const avgAccuracy = difficultyHistory.reduce((a, b) => a + b, 0) / difficultyHistory.length;
+      if (avgAccuracy > performanceThreshold) {
+        currentLevel = Math.min(currentLevel + 0.5, 4);
+        displayTime = Math.max(300, displayTime - 50);
+        intervalTime = Math.max(1000, intervalTime - 100);
+        trialCount = Math.min(30, trialCount + 2);
+      } else {
+        currentLevel = Math.max(0, currentLevel - 0.5);
+        displayTime = Math.min(1000, displayTime + 50);
+        intervalTime = Math.min(2000, intervalTime + 100);
+        trialCount = Math.max(15, trialCount - 2);
+      }
+    }
+
+    // Generate a randomized sequence of trials based on the current level
+    function generateSequence(level) {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+      const targetCount = Math.floor(Math.random() * 3) + 6;
+      const seq = [];
+      let targetsCreated = 0;
+
+      for (let i = 0; i < trialCount; i++) {
+        seq.push({
+          letter: letters[Math.floor(Math.random() * letters.length)],
+          isTarget: false
+        });
+      }
+
+      for (let i = level; i < trialCount; i++) {
+        if (targetsCreated >= targetCount) break;
+        if (Math.random() < 0.3) {
+          seq[i].isTarget = true;
+          if (level === 0) {
+            seq[i].letter = 'X';
+          } else {
+            seq[i].letter = seq[i - level].letter;
+          }
+          targetsCreated++;
+        }
+      }
+      return seq;
+    }
+
+    // Begin the test by initializing trial parameters and hiding settings
+    function startTest() {
+      elements.startButton.disabled = true;
+      currentLevel = parseInt(elements.levelSelect.value);
+      sequence = generateSequence(currentLevel);
+      trialData = [];
+      trialIndex = 0;
+      elements.results.innerHTML = "";
+      document.querySelectorAll('.card').forEach(c => c.style.display = 'none');
+      runTrial();
+    }
+
+    // Execute a single trial
+    function runTrial() {
+      if (trialIndex >= trialCount) return endTest();
+
+      // Update progress and display current level
+      elements.progress.style.width = `${(trialIndex / trialCount) * 100}%`;
+      elements.display.dataset.level = `Level: ${Math.floor(currentLevel)}-back`;
+
+      // Set the current trial globally so it can be accessed by the response handler
+      currentTrial = sequence[trialIndex];
+      elements.display.textContent = currentTrial.letter;
+      elements.display.classList.add('active');
+      currentTrialStartTime = Date.now();
+      trialInProgress = true;
+
+      // Listen for keyboard responses for this trial (once only)
+      document.addEventListener('keydown', processResponse, { once: true });
+
+      // Set a timeout for when no response is made (omission)
+      responseTimeout = setTimeout(() => {
+        if (trialInProgress) {
+          elements.display.classList.remove('active');
+          recordTrialData(null, null, false);
+          trialInProgress = false;
+          trialIndex++;
+          setTimeout(runTrial, intervalTime);
+        }
+      }, displayTime);
+    }
+
+    // Check if the response matches the target condition
+    function checkAnswer(trial, key) {
+      if (trial.isTarget) return key === 'ArrowLeft';
+      return key === 'ArrowRight';
+    }
+
+    // Record trial data for later analysis
+    function recordTrialData(response, rt, isCorrect) {
+      trialData.push({
+        letter: currentTrial.letter,
+        isTarget: currentTrial.isTarget,
+        response,
+        reactionTime: rt,
+        isCorrect
+      });
+    }
+
+    // Conclude the test and display performance results
+    function endTest() {
+      const stats = {
+        accuracy: 0,
+        avgRT: 0,
+        falseAlarms: 0,
+        omissions: 0,
+        targets: trialData.filter(t => t.isTarget).length
+      };
+
+      const validResponses = trialData.filter(t => t.response);
+      stats.accuracy = (validResponses.filter(t => t.isCorrect).length / validResponses.length) * 100 || 0;
+      stats.avgRT = validResponses.reduce((a, b) => a + b.reactionTime, 0) / validResponses.length || 0;
+      stats.falseAlarms = trialData.filter(t => !t.isTarget && t.response === 'ArrowLeft').length;
+      stats.omissions = trialData.filter(t => t.isTarget && !t.response).length;
+
+      adjustDifficulty(stats.accuracy / 100);
+
+      elements.results.innerHTML = `
+        <div class="stat-item">
+          <h3>${stats.accuracy.toFixed(1)}%</h3>
+          <p>Accuracy</p>
+        </div>
+        <div class="stat-item">
+          <h3>${stats.avgRT.toFixed(0)}ms</h3>
+          <p>Avg. Response Time</p>
+        </div>
+        <div class="stat-item">
+          <h3>${stats.falseAlarms}</h3>
+          <p>False Alarms</p>
+        </div>
+        <div class="stat-item">
+          <h3>${stats.omissions}</h3>
+          <p>Missed Targets</p>
+        </div>
+      `;
+
+      const restartButton = document.createElement('button');
+      restartButton.textContent = 'Restart Test';
+      restartButton.onclick = () => window.location.reload();
+      elements.results.parentElement.append(restartButton);
+
+      document.querySelectorAll('.card').forEach(c => c.style.display = 'block');
+      elements.startButton.disabled = false;
+    }
+
+    // Event listener for starting the test
+    elements.startButton.addEventListener('click', startTest);
+
+    // Responsive layout adjustment
+    function handleResize() {
+      const aspectRatio = window.innerWidth / window.innerHeight;
+      document.body.classList.toggle('mobile-view', aspectRatio < 0.75);
+    }
+    window.addEventListener('resize', handleResize);
+    handleResize();
+  </script>
+</body>
+</html>
