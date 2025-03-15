@@ -1,8 +1,3 @@
-Below is a fully developed Python pipeline to process EEG data and execute all the required steps, including generating time-frequency ERDS maps, feature extraction, feature selection, machine learning classification, and statistical analysis.
-
----
-
-### **1. Libraries and Setup**
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
