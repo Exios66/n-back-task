@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mne.time_frequency import tfr_multitaper
 from mne import create_info, EpochsArray
+from mne.time_frequency import tfr_multitaper
+from mne.stats.cluster_level import permutation_cluster_test
 import scipy.stats as stats
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import precision_score, recall_score, f1_score
+from scipy.stats import ttest_ind
 
 # Simulated EEG data for demonstration purposes
 n_channels = 64
@@ -111,14 +113,11 @@ y_pred = clf.predict(X_test_selected)
 precision = precision_score(y_test, y_pred)
 recall = recall_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
+print("Precision: {}, Recall: {}, F1-score: {}".format(precision, recall, f1))
 
-print(f"Precision: {precision}, Recall: {recall}, F1-score: {f1}")
-```
-
----
 ### **6. Statistical Analysis**
+condition_1_features = features[labels == 0]
 condition_2_features = features[labels == 1]
-
 t_statistic, p_value = ttest_ind(condition_1_features[:, selected_features_indices],
                                  condition_2_features[:, selected_features_indices], axis=0)
 
@@ -143,3 +142,5 @@ f_obs, clusters, cluster_pv, h0 = permutation_cluster_test(
 
 print("Significant clusters (p < 0.05):", [i for i, p in enumerate(cluster_pv) if p < 0.05])
 print("Cluster p-values:", cluster_pv)
+```
+
