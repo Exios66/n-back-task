@@ -1,9 +1,3 @@
-Below is a fully developed Python pipeline to process EEG data and execute all the required steps, including generating time-frequency ERDS maps, feature extraction, feature selection, machine learning classification, and statistical analysis.
-
----
-
-### **1. Libraries and Setup**
-```python
 import numpy as np
 import matplotlib.pyplot as plt
 from mne.time_frequency import tfr_multitaper
@@ -18,14 +12,17 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 n_channels = 64
 n_samples = 1000
 n_epochs = 50
+
+
+
 sfreq = 500  # Sampling frequency
-data = np.random.randn(n_epochs, n_channels, n_samples)
-```
+t = np.arange(n_samples) / sfreq
+# Simulate EEG data with oscillatory components and noise
+theta = 0.5 * np.sin(2 * np.pi * 5 * t)  # 5 Hz theta
+alpha = 0.3 * np.sin(2 * np.pi * 10 * t)  # 10 Hz alpha
+noise = 0.2 * np.random.randn(n_epochs, n_channels, n_samples)
+data = noise + theta + alpha
 
----
-
-### **2. Time-Frequency ERDS Map Generation**
-```python
 # Create MNE Epochs object
 info = create_info(ch_names=[f'EEG{i}' for i in range(n_channels)], sfreq=sfreq, ch_types='eeg')
 epochs = EpochsArray(data, info)
@@ -45,12 +42,15 @@ plt.xlabel('Time (s)')
 plt.ylabel('Frequency (Hz)')
 plt.title(f'Time-Frequency ERDS Map for Channel {channel_idx}')
 plt.show()
-```
 
----
 
-### **3. Feature Extraction**
-```python
+
+
+
+
+
+
+
 features = []
 for epoch in data:
     for channel in epoch:
@@ -68,14 +68,13 @@ for epoch in data:
                          skewness_val, kurtosis_val, entropy_val])
 
 # Convert features to numpy array for further processing
-features = np.array(features)
-print("Feature shape:", features.shape)  # Verify dimensions (n_epochs * n_channels x feature_count)
+
+
 ```
+# Start of Selection
+features = np.array(features)
+print("Feature shape:", repr(features.shape))  # Verify dimensions (n_epochs * n_channels x feature_count)
 
----
-
-### **4. Feature Selection**
-```python
 # Simulated labels for binary classification (e.g., workload levels)
 labels = np.random.randint(0, 2, size=(features.shape[0]))
 
