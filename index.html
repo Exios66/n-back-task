@@ -20,6 +20,7 @@
       min-height: 100vh;
       padding: 2vmin;
       color: var(--text);
+      line-height: 1.6;
     }
     #container {
       max-width: min(800px, 90vw);
@@ -28,6 +29,7 @@
       padding: clamp(1rem, 3vmin, 2rem);
       border-radius: 16px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      -webkit-backdrop-filter: blur(10px); /* Added vendor prefix for Safari */
       backdrop-filter: blur(10px);
     }
     h1, h2 {
@@ -118,12 +120,16 @@
       justify-content: center;
       gap: 2rem;
       margin: 1rem 0;
+      flex-wrap: wrap;
     }
     .key {
       padding: 8px 16px;
       border: 2px solid var(--primary);
       border-radius: 6px;
       font-weight: bold;
+      min-width: 120px;
+      text-align: center;
+      background: #f8f9fa;
     }
     .touch-input {
       display: none;
@@ -140,6 +146,36 @@
       color: white;
       border: none;
     }
+    h3 {
+      color: var(--primary);
+      margin: 1.5rem 0 0.5rem;
+      font-size: 1.2rem;
+    }
+    ul {
+      margin: 0.5rem 0;
+      padding-left: 1.5rem;
+    }
+    li {
+      margin: 0.5rem 0;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 2px solid var(--primary);
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-top: 4px;
+    }
+    label {
+      font-weight: 500;
+      color: var(--text);
+    }
+    .example {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 0.5rem 0;
+    }
     @media (max-width: 600px) {
       #container {
         padding: 1rem;
@@ -155,7 +191,14 @@
       }
       .key-hint {
         flex-direction: column;
+        align-items: center;
         gap: 1rem;
+      }
+      .key {
+        width: 100%;
+      }
+      input, select {
+        font-size: 16px; /* Prevents zoom on mobile */
       }
     }
   </style>
@@ -166,22 +209,70 @@
     
     <div class="card" id="instructions">
       <h2>Instructions</h2>
-      <div class="key-hint">
-        <div class="key">← Target</div>
-        <div class="key">→ Non-target</div>
-      </div>
-      <p>In this cognitive task, letters will appear one at a time. Your goal is to determine if the current letter matches:</p>
+      <p>Welcome to the N-back Cognitive Task! This task measures your working memory and attention.</p>
+      
+      <h3>Task Overview</h3>
+      <p>Letters will appear one at a time on the screen. Your task is to identify matches based on the current N-back level:</p>
       <ul>
-        <li><strong>0-back:</strong> The letter <em>X</em></li>
-        <li><strong>1-back:</strong> The immediately previous letter</li>
-        <li><strong>2-back:</strong> The letter from two trials back</li>
+        <li><strong>0-back:</strong> Press ← when you see the letter 'X' (target letter)</li>
+        <li><strong>1-back:</strong> Press ← when the current letter matches the previous letter</li>
+        <li><strong>2-back:</strong> Press ← when the current letter matches the letter shown two positions back</li>
       </ul>
-      <p>The test automatically adapts difficulty based on your performance. Respond as quickly and accurately as possible using the arrow keys or touch buttons.</p>
+      
+      <h3>Response Keys</h3>
+      <div class="key-hint">
+        <div class="key">← Target Match</div>
+        <div class="key">→ Non-match</div>
+      </div>
+      
+      <h3>Important Notes</h3>
+      <ul>
+        <li>Respond as quickly and accurately as possible</li>
+        <li>If unsure, it's better to respond than to not respond</li>
+        <li>The task automatically adapts difficulty based on your performance</li>
+        <li>Each session includes multiple trials with breaks in between</li>
+      </ul>
+      
+      <h3>Example Sequences</h3>
+      <p><strong>1-back example:</strong> In the sequence "A B B C", press ← on the second B (matches previous)</p>
+      <p><strong>2-back example:</strong> In the sequence "A B A C", press ← on the second A (matches 2 back)</p>
+    </div>
+
+    <div class="card" id="participant-info">
+      <h2>Participant Information</h2>
+      <div style="display: grid; gap: 1rem; max-width: 400px; margin: 0 auto;">
+        <div>
+          <label for="participantId">Participant ID:</label>
+          <input type="text" id="participantId" required>
+        </div>
+        <div>
+          <label for="age">Age:</label>
+          <input type="number" id="age" min="0" max="120">
+        </div>
+        <div>
+          <label for="gender">Gender:</label>
+          <select id="gender">
+            <option value="">Prefer not to say</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="handedness">Dominant Hand:</label>
+          <select id="handedness">
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+            <option value="ambidextrous">Ambidextrous</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="settings">
       <h2>Test Settings</h2>
       <div class="button-group">
+        <label for="levelSelect">N-back Level:</label>
         <select id="levelSelect">
           <option value="0">0-back</option>
           <option value="1">1-back</option>
@@ -329,6 +420,12 @@
 
     // Begin the test by initializing trial parameters and hiding settings
     function startTest() {
+      const participantId = document.getElementById('participantId').value;
+      if (!participantId) {
+        alert('Please enter a Participant ID before starting the test.');
+        return;
+      }
+
       elements.startButton.disabled = true;
       currentLevel = parseInt(elements.levelSelect.value);
       sequence = generateSequence(currentLevel);
@@ -377,59 +474,119 @@
 
     // Record trial data for later analysis
     function recordTrialData(response, rt, isCorrect) {
-      trialData.push({
+      const trialInfo = {
+        level: currentLevel,
         letter: currentTrial.letter,
         isTarget: currentTrial.isTarget,
-        response,
+        response: response,
         reactionTime: rt,
-        isCorrect
-      });
+        isCorrect: isCorrect,
+        displayTime: displayTime,
+        intervalTime: intervalTime,
+        timestamp: new Date().toISOString(),
+        trialNumber: trialIndex + 1,
+        totalTrials: trialCount
+      };
+      trialData.push(trialInfo);
+    }
+
+    // Save results to file
+    function saveResults() {
+      const results = {
+        participantData: {
+          id: document.getElementById('participantId').value,
+          age: document.getElementById('age').value,
+          gender: document.getElementById('gender').value,
+          handedness: document.getElementById('handedness').value,
+          timestamp: new Date().toISOString(),
+          totalTrials: trialCount,
+          finalLevel: currentLevel,
+          finalDisplayTime: displayTime,
+          finalIntervalTime: intervalTime
+        },
+        trials: trialData,
+        performanceMetrics: calculatePerformanceMetrics()
+      };
+
+      const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const participantId = document.getElementById('participantId').value || 'anonymous';
+      a.download = `nback-results-${participantId}-${new Date().toISOString().split('.')[0].replace(/[:\-]/g, '')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Calculate detailed performance metrics
+    function calculatePerformanceMetrics() {
+      const validResponses = trialData.filter(t => t.response);
+      const targetTrials = trialData.filter(t => t.isTarget);
+      const nonTargetTrials = trialData.filter(t => !t.isTarget);
+
+      return {
+        overallAccuracy: (validResponses.filter(t => t.isCorrect).length / validResponses.length) * 100 || 0,
+        meanRT: validResponses.reduce((a, b) => a + b.reactionTime, 0) / validResponses.length || 0,
+        targetAccuracy: (targetTrials.filter(t => t.isCorrect).length / targetTrials.length) * 100 || 0,
+        nonTargetAccuracy: (nonTargetTrials.filter(t => t.isCorrect).length / nonTargetTrials.length) * 100 || 0,
+        falseAlarms: trialData.filter(t => !t.isTarget && t.response === 'ArrowLeft').length,
+        misses: trialData.filter(t => t.isTarget && !t.response).length,
+        correctRejections: trialData.filter(t => !t.isTarget && t.response === 'ArrowRight').length,
+        hits: trialData.filter(t => t.isTarget && t.response === 'ArrowLeft').length
+      };
     }
 
     // Conclude the test and display performance results
     function endTest() {
-      const stats = {
-        accuracy: 0,
-        avgRT: 0,
-        falseAlarms: 0,
-        omissions: 0,
-        targets: trialData.filter(t => t.isTarget).length
-      };
-
-      const validResponses = trialData.filter(t => t.response);
-      stats.accuracy = (validResponses.filter(t => t.isCorrect).length / validResponses.length) * 100 || 0;
-      stats.avgRT = validResponses.reduce((a, b) => a + b.reactionTime, 0) / validResponses.length || 0;
-      stats.falseAlarms = trialData.filter(t => !t.isTarget && t.response === 'ArrowLeft').length;
-      stats.omissions = trialData.filter(t => t.isTarget && !t.response).length;
-
-      adjustDifficulty(stats.accuracy / 100);
-
+      const metrics = calculatePerformanceMetrics();
+      
       elements.results.innerHTML = `
         <div class="stat-item">
-          <h3>${stats.accuracy.toFixed(1)}%</h3>
-          <p>Accuracy</p>
+          <h3>${metrics.overallAccuracy.toFixed(1)}%</h3>
+          <p>Overall Accuracy</p>
         </div>
         <div class="stat-item">
-          <h3>${stats.avgRT.toFixed(0)}ms</h3>
-          <p>Avg. Response Time</p>
+          <h3>${metrics.meanRT.toFixed(0)}ms</h3>
+          <p>Mean Response Time</p>
         </div>
         <div class="stat-item">
-          <h3>${stats.falseAlarms}</h3>
+          <h3>${metrics.hits}</h3>
+          <p>Hits</p>
+        </div>
+        <div class="stat-item">
+          <h3>${metrics.falseAlarms}</h3>
           <p>False Alarms</p>
         </div>
         <div class="stat-item">
-          <h3>${stats.omissions}</h3>
-          <p>Missed Targets</p>
+          <h3>${metrics.correctRejections}</h3>
+          <p>Correct Rejections</p>
+        </div>
+        <div class="stat-item">
+          <h3>${metrics.misses}</h3>
+          <p>Misses</p>
         </div>
       `;
 
+      const buttonGroup = document.createElement('div');
+      buttonGroup.className = 'button-group';
+      
+      const saveButton = document.createElement('button');
+      saveButton.textContent = 'Save Results';
+      saveButton.onclick = saveResults;
+      
       const restartButton = document.createElement('button');
       restartButton.textContent = 'Restart Test';
       restartButton.onclick = () => window.location.reload();
-      elements.results.parentElement.append(restartButton);
+      
+      buttonGroup.append(saveButton, restartButton);
+      elements.results.parentElement.append(buttonGroup);
 
       document.querySelectorAll('.card').forEach(c => c.style.display = 'block');
       elements.startButton.disabled = false;
+
+      adjustDifficulty(metrics.overallAccuracy / 100);
     }
 
     // Event listener for starting the test
