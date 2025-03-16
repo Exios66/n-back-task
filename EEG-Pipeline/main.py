@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mne.time_frequency import tfr_multitaper
 from mne import create_info, EpochsArray
-from scipy.stats import skew, kurtosis, entropy
+import scipy.stats as stats
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -60,9 +60,9 @@ for epoch in data:
         theta_to_alpha_ratio = band_power_theta / band_power_alpha
         mean_val = np.mean(channel)
         variance_val = np.var(channel)
-        skewness_val = skew(channel)
-        kurtosis_val = kurtosis(channel)
-        entropy_val = entropy(np.abs(channel))
+        skewness_val = stats.skew(channel)
+        kurtosis_val = stats.kurtosis(channel)
+        entropy_val = stats.entropy(np.abs(channel))
         features.append([band_power_theta, band_power_alpha, alpha_to_theta_ratio,
                          theta_to_alpha_ratio, mean_val, variance_val,
                          skewness_val, kurtosis_val, entropy_val])
@@ -116,13 +116,7 @@ print(f"Precision: {precision}, Recall: {recall}, F1-score: {f1}")
 ```
 
 ---
-
 ### **6. Statistical Analysis**
-```python
-from scipy.stats import ttest_ind
-
-# Perform paired t-tests to compare conditions (e.g., workload levels based on labels)
-condition_1_features = features[labels == 0]
 condition_2_features = features[labels == 1]
 
 t_statistic, p_value = ttest_ind(condition_1_features[:, selected_features_indices],
@@ -130,6 +124,22 @@ t_statistic, p_value = ttest_ind(condition_1_features[:, selected_features_indic
 
 print("T-statistics:", t_statistic)
 print("P-values:", p_value)
+# Implement cluster-based permutation test
+from mne.stats import permutation_cluster_test
 
-# Cluster-based permutation tests can be implemented using MNE's statistical functions if needed.
-```
+# Reshape data for cluster-based test (assuming we have multiple channels/features)
+condition_1_data = condition_1_features[:, selected_features_indices].T  # Transpose for channels x times format
+condition_2_data = condition_2_features[:, selected_features_indices].T
+
+# Run permutation cluster test
+f_obs, clusters, cluster_pv, h0 = permutation_cluster_test(
+    [condition_1_data, condition_2_data],
+    n_permutations=1000,
+    threshold=2.0,  # Threshold for cluster formation
+    tail=0,  # Two-tailed test
+    n_jobs=1,
+    verbose=True
+)
+
+print("Significant clusters (p < 0.05):", [i for i, p in enumerate(cluster_pv) if p < 0.05])
+print("Cluster p-values:", cluster_pv)
